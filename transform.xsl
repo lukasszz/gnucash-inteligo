@@ -16,32 +16,32 @@
                         </BANKACCTFROM>
                         <BANKTRANLIST>
                             <DTSTART>
-                                <xsl:value-of select="account-history/search/date">
-                                    <xsl:value-of select="@since"/>
-                                </xsl:value-of>
+                                <xsl:value-of select="translate(account-history/search/date/@since, '-', '')"/>
                             </DTSTART>
+                            <DTEND>
+                                <xsl:value-of select="translate(account-history/search/date/@to, '-', '')"/>
+                            </DTEND>
 
                             <xsl:for-each select="account-history/operations/operation">
                                 <STMTTRN>
                                     <TRNTYPE><xsl:value-of select="class"/></TRNTYPE>
-                                    <xsl:variable name="exec-date">
-                                        <xsl:value-of select="exec-date"/>
-                                    </xsl:variable>
-                                    <DTPOSTED><xsl:value-of select="translate($exec-date, '-', '')"/></DTPOSTED>
-                                    <xsl:variable name="order-date">
-                                        <xsl:value-of select="order-date"/>
-                                    </xsl:variable>
-                                    <DTUSER><xsl:value-of select="translate($order-date, '-','')"/></DTUSER>
+                                    <DTPOSTED><xsl:value-of select="translate(exec-date, '-', '')"/></DTPOSTED>
+                                    <DTUSER><xsl:value-of select="translate(order-date, '-','')"/></DTUSER>
                                     <TRNAMT><xsl:value-of select="amount"/></TRNAMT>
                                     <FITID><xsl:value-of select="@id"/></FITID>
-                                    <xsl:variable name="type">
-                                        <xsl:value-of select="type"/>
-                                    </xsl:variable>
-                                    <xsl:variable name="desc">
-                                        <xsl:value-of select="description"/>
-                                    </xsl:variable>
-                                    <NAME><xsl:value-of select="$type"/></NAME>
-                                    <MEMO><xsl:value-of select="$desc"/></MEMO>
+                                    <NAME><xsl:value-of select="type"/></NAME>
+                                    <EXTDNAME></EXTDNAME>
+                                    <MEMO><xsl:value-of select="description"/></MEMO>
+                                    <xsl:if test="other-side">
+                                        <xsl:if test="class = 'CREDIT'">
+                                            <BANKACCTFROM><xsl:value-of select="other-side/account"/></BANKACCTFROM>
+                                            <BANKACCTTO><xsl:value-of select="/account-history/search/account"/></BANKACCTTO>
+                                        </xsl:if>
+                                        <xsl:if test="class = 'DEBIT'">
+                                            <BANKACCTTO><xsl:value-of select="other-side/account"/></BANKACCTTO>
+                                            <BANKACCTFROM><xsl:value-of select="/account-history/search/account"/></BANKACCTFROM>
+                                        </xsl:if>
+                                    </xsl:if>
                                 </STMTTRN>
                             </xsl:for-each>
                         </BANKTRANLIST>
