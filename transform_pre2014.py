@@ -1,0 +1,131 @@
+#!/bin/python3
+
+import getopt
+import os
+import sys
+import lxml.etree as et
+import re
+import codecs
+
+
+def transform(inputfilename):
+    dom = et.parse(inputfilename)
+    xslt = et.parse('transform.xsl')
+    output = et.XSLT(xslt)
+
+    docinfo = dom.docinfo
+    print(docinfo.encoding)
+
+    return output(dom)
+
+
+def _przelew_extract(memo):
+    m = re.match(r"(.*) Nr rach.: (.*) Tytuł: (.*) Data waluty: (.*)", memo.text)
+    if (m):
+        kto = m.group(1)
+        konto = m.group(2)
+        co = m.group(3)
+    else:
+        m = re.match(r"(Nr telefonu: .*) (Kod doładowania.*) Data waluty: (.*)", memo.text)
+        konto = 'None'
+        kto = m.group(1)
+        co = m.group(2)
+    return konto, kto, co
+
+
+def _karta_extract(memo):
+    m = re.match(r"Kwota operacji: (.*) PLN (?:(?:Kwota rozliczeniowa:) (\S*) (\S*) (?:Data przetworzenia:) (\S*) (?:Kurs walutowy:) (\S*))?(.*) Data wykonania: (.*) Karta nr: (.*) Data waluty: (.*)", memo.text)
+    kwota = m.group(1)
+    kwota_obca = m.group(2)
+    waluta_symbol = str(m.group(3))
+    waluta_data = m.group(4)
+    waluta_kurs = m.group(5) 
+    kto = m.group(6)
+    data_zlecenia = m.group(7)
+    data_wykonania = m.group(9)
+    karta = m.group(8)
+    return kto, karta, kwota_obca, waluta_symbol
+
+
+def _cleanup_desc(name, extname, memo):
+    if name.text == 'Przelew z rachunku' or name.text == 'Zlecenie stałe':
+        konto, kto, co = _przelew_extract(memo)
+        extname.text = co + ', dla: ' + kto + '; Nr Konta: ' + konto
+        memo.text = co + ', dla: ' + kto
+        name.text = name.text + ', dla: ' + kto
+    elif name.text == 'Przelew na rachunek':
+        konto, kto, co = _przelew_extract(memo)
+        extname.text = co + ', od: ' + kto + '; Nr Konta: ' + konto
+        memo.text = co + ', od: ' + kto
+        name.text = name.text + ', od: ' + kto
+    elif name.text == 'Płatność kartą' or name.text == 'Wypłata z bankomatu':
+        kto, karta, kwota_obca, waluta_symbol = _karta_extract(memo)
+        if waluta_symbol != 'None':
+            extname.text = 'Karta: ' + karta + ', w: ' + kto + '; Kwota: ' + kwota_obca + ' ' + waluta_symbol
+            memo.text = 'Karta: ' + karta + ', w: ' + kto
+            name.text = name.text + ', w: ' + kto
+        else:
+            extname.text = 'Karta: ' + karta + ', w: ' + kto
+            memo.text = name.text + " " + karta + ', w: ' + kto
+            name.text = name.text + ", w: " + kto
+
+
+def cleanup(newdom):
+    for el in newdom.iter("STMTTRN"):
+        name = el.find('NAME')
+        extname = el.find('EXTDNAME')
+        memo = el.find('MEMO')
+      
+        try:
+            _cleanup_desc(name, extname, memo)
+        except:
+            print("Nie udało się rozkodować")
+            print(name.text)
+            print(extname.text)
+            print(memo.text) 
+
+
+def conv_encoding(outputfilename):
+    BLOCKSIZE = 1048576  # or some other, desired size in bytes
+    with codecs.open('_inteligo_8859.ofx', "r", "iso-8859-2") as sourceFile:
+        with codecs.open(outputfilename, "w", "utf-8") as targetFile:
+            while True:
+                contents = sourceFile.read(BLOCKSIZE)
+                if not contents:
+                    break
+                targetFile.write(contents)
+    if os.path.exists("_inteligo_8859.ofx"):
+        os.remove("_inteligo_8859.ofx")
+
+
+def main(argv):
+    inputfilename = 'historia_pre2014.xml'
+    outputfilename = 'inteligo.ofx'
+    
+    try:
+        opts, args = getopt.getopt(argv,"hi:o:",["ifille=","ofile="])
+    except getopt.GetoptError:
+        print("transform.py -i <inputfile> -o <outputfilename>")
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h' or opt == '--help':
+            print("transform.py -i <inputfile> -o <outputfilename>")
+            sys.exit()
+        elif opt in ("-i", "--ifile", "--in", "--input"):
+            inputfilename = arg
+        elif opt in ("-o", "--ofile", "--out", "--output"):
+            if arg.split(".")[1] & arg.split(".")[-1] == ".ofx":
+                outputfilename = arg
+            else:
+                outputfilename = arg + ".ofx"
+    print("Input file is: " + inputfilename)
+    print("Output file is: " + outputfilename)
+
+    newdom = transform(inputfilename)
+    cleanup(newdom)
+    newdom.write('_inteligo_8859.ofx', pretty_print=True, encoding='iso-8859-2')
+    conv_encoding(outputfilename)
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
