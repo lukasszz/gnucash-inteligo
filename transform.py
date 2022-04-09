@@ -1,11 +1,14 @@
 #!/bin/python3
 
+import getopt
+import os
+import sys
 import lxml.etree as et
 import re
 import codecs
 
-def transform():
-    dom = et.parse('historia.xml')
+def transform(inputfilename):
+    dom = et.parse(inputfilename)
     xslt = et.parse('transform.xsl')
     transform = et.XSLT(xslt)
 
@@ -78,24 +81,46 @@ def cleanup(newdom):
             print(name.text)
             print(memo.text) 
 
-        #print(name.text)
-        #print(memo.text) 
-
-def conv_encoding():
+def conv_encoding(outputfilename):
     BLOCKSIZE = 1048576 # or some other, desired size in bytes
     with codecs.open('_inteligo_8859.ofx', "r", "iso-8859-2") as sourceFile:
-        with codecs.open('inteligo2.ofx', "w", "utf-8") as targetFile:
+        with codecs.open(outputfilename, "w", "utf-8") as targetFile:
             while True:
                 contents = sourceFile.read(BLOCKSIZE)
                 if not contents:
                     break
                 targetFile.write(contents)
+    if os.path.exists("_inteligo_8859.ofx"):
+        os.remove("_inteligo_8859.ofx")
 
-if __name__ == '__main__':
+def main(argv):
+    inputfilename = 'historia_old.xml'
+    outputfilename = 'inteligo.ofx'
+    
+    try:
+        opts, args = getopt.getopt(argv,"hi:o:",["ifille=","ofile="])
+    except getopt.GetoptError:
+        print("transform.py -i <inputfile> -o <outputfilename>")
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h' or opt == '--help':
+            print("transform.py -i <inputfile> -o <outputfilename>")
+            sys.exit()
+        elif opt in ("-i", "--ifile", "--in", "--input"):
+            inputfilename = arg
+        elif opt in ("-o", "--ofile", "--out", "--output"):
+            if arg.split(".")[1] & arg.split(".")[-1] == ".ofx":
+                outputfilename = arg
+            else:
+                outputfilename = arg + ".ofx"
+    print("Input file is: " + inputfilename)
+    print("Output file is: " + outputfilename)
 
-    newdom = transform()
+
+    newdom = transform(inputfilename)
     cleanup(newdom)
     newdom.write('_inteligo_8859.ofx', pretty_print=True, encoding='iso-8859-2')
-    conv_encoding()
+    conv_encoding(outputfilename)
 
-
+if __name__ == '__main__':
+    main(sys.argv[1:])
