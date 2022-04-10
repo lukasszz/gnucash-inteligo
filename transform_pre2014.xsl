@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="ISO-8859-2"?>
+<!--Copyright Hiero Software 2022-->
+<!--Contact person: HighPriest@github-->
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
     <xsl:output method="xml" indent="yes" encoding="ISO-8859-2"/>    
 

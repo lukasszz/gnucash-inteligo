@@ -10,3 +10,8 @@ Skrypt Python, pozwalający na zaimportowanie wyciągów z `Inteligo` do `Gnucas
 ## Uwaga
 1. Inteligo również udostępnia podsumowania w postaci comiesięcznych wiadomości mailowych.  
 Pliki te, pomimo zgodnej nazwy, posiadają trochę inną strukturę. Aby móc je konwertować do formatu zgodnego z gnucash, potrzebna jest modyfikacja template'u XSL.
+2. W repozytorium dostępny jest alternatywny skrypt, dla transakcji sprzed 2014 roku. Powinien on pozwolić wam zaimportować transakcje z podobnym rezultatem, co w wypadku nowszych opisów. 
+
+## Notes
+- Dobre narzędzie do sprawdzania pythonowych regex'ów: https://regex101.com/
+- **GNU GENERAL PUBLIC LICENSE**
