@@ -9,17 +9,15 @@ import lxml.etree as et
 import re
 import codecs
 
-
 def transform(inputfilename):
     dom = et.parse(inputfilename)
     xslt = et.parse('transform.xsl')
-    output = et.XSLT(xslt)
+    transform = et.XSLT(xslt)
 
     docinfo = dom.docinfo
     print(docinfo.encoding)
 
-    return output(dom)
-
+    return transform(dom)
 
 def _przelew_extract(memo):
     m = re.match(r".*(?P<nr_rach>(?<=Nr rach. przeciwst.: )(?:.*))?Dane adr\. rach\. przeciwst\.: (?P<adres>(?<=Dane adr\. rach\. przeciwst\.: )(?:.*)) Tytuł: (?P<tytul>(?<=Tytuł: )(?:.*)) Data waluty: (?P<data_waluty>(?<=Data waluty: )(?:.*))", memo.text)
@@ -27,7 +25,6 @@ def _przelew_extract(memo):
     kto = m.group('adres')
     co = m.group('tytul')
     return konto, kto, co
-
 
 def _karta_extract(memo):
     m = re.match(r".*(?P<tytul>(?<=Tytuł: )(?:.*))?Lokalizacja: Kraj: (?P<kraj>(?<=Kraj: )(?:.*)) Miasto: (?P<miasto>(?<=Miasto: )(?:.*)) Adres: (?P<adres>(?<=Adres: )(?:.*)) Data wykonania: (?P<data_zgloszenia>(?<=Data wykonania: )(?:.*)) Numer referencyjny: (?P<nr_ref>(?<=Numer referencyjny: )(?:.*)) Oryginalna kwota operacji: (?P<kwota>(?<=Oryginalna kwota operacji: )(?:.*))\s(?P<waluta>(?:\w{3})) Numer karty: \* (?P<nr_karty>(?<=Numer karty: \* )(?:.{4})) Data waluty: (?P<data_realizacji>(?<=Data waluty: )(?:.*))", memo.text)
@@ -43,7 +40,6 @@ def _karta_extract(memo):
     data_realizacji = m.group('data_realizacji')
     return adres + " " + miasto, karta, kwota, waluta
 
-
 def _wyplata_extract(memo):
     m = re.match(r".*(?P<tytul>(?<=Tytuł: )(?:.*))?Lokalizacja: Kraj: (?P<kraj>(?<=Kraj: )(?:.*)) Miasto: (?P<miasto>(?<=Miasto: )(?:.*)) Adres: (?P<adres>(?<=Adres: )(?:.*)) Data wykonania: (?P<data_zgloszenia>(?<=Data wykonania: )(?:.*)) Numer referencyjny: (?P<nr_ref>(?<=Numer referencyjny: )(?:\S*)).* Bankomat: (?P<bankomat>(?<=Bankomat: )(?:.*)) Numer telefonu: (?P<nr_telefonu>(?<=Numer telefonu: )(?:.*))  Data waluty: (?P<data_realizacji>(?<=Data waluty: )(?:.*))", memo.text)
     tytul = m.group('tytul')
@@ -57,8 +53,9 @@ def _wyplata_extract(memo):
     data_realizacji = m.group('data_realizacji')
     return adres + " " + miasto, bankomat
 
-
 def _platnosc_web_extract(memo):
+    #TODO: fix this regexp
+    #(?P<tytul>(?<=Tytuł: )(?:.*))?Lokalizacja:(?:\s+Kraj:\s(?P<kraj>(?:.*?)))?(?:\s+Miasto:\s(?P<miasto>(?:.*?)))? Adres: (?P<adres>(?<=Adres: )(?:.*)) Data wykonania: (?P<data_zgloszenia>(?<=Data wykonania: )(?:.*)) Numer referencyjny: (?P<nr_ref>(?<=Numer referencyjny: )(?:\S*)).* Numer telefonu: (?P<nr_telefonu>(?<=Numer telefonu: )(?:.*))  Data waluty: (?P<data_realizacji>(?<=Data waluty: )(?:.*))
     m = re.match(r"(?:.*Tytuł:\s(?P<tytul>(?:.*?)) )?Lokalizacja:(?:\s+Kraj:\s(?P<kraj>(?:.*?)))?(?:\s+Miasto:\s(?P<miasto>(?:.*?)))?(?:\s+Adres:\s(?P<adres>(?:.*?)) )?(?:Data wykonania:\s(?P<data_zgloszenia>(?:.*?)))?(?:\s+Kwota CashBack:\s(?P<cashback>(?:.*?)))?(?:\s+Numer referencyjny:\s(?P<nr_ref>(?:.*?)))?(?:\s+Oryginalna kwota operacji:\s(?P<kwota>(?:.*?)))?(?:\s+Numer karty:\s\*\s(?P<nr_karty>(?:.*?)))?(?:\s+Numer telefonu:\s(?P<nr_tel>(?:.*)))?\s+Data waluty: (?P<data_realizacji>(?:.*))", memo.text)
     if m == None:
         m = re.match(r".*(?P<nr_rach>(?<=Nr rach. przeciwst.: )(?:.*))?Dane adr\. rach\. przeciwst\.: (?P<adres>(?<=Dane adr\. rach\. przeciwst\.: )(?:.*)) Tytuł: (?P<tytul>(?<=Tytuł: )(?:.*)) Data waluty: (?P<data_realizacji>(?<=Data waluty: )(?:.*))", memo.text)
@@ -96,7 +93,6 @@ def _platnosc_web_extract(memo):
         data_realizacji = ''
     return tytul, adres + " " + miasto
 
-
 def _oplata_extract(memo):
     m = re.match(r"(?:.*Tytuł:\s(?P<tytul>(?:.*?)))?(?:\,)? (?:(?P<okres>(?:\d?\d\.\d\d\-\d?\d\.\d\d)))?\s?Data waluty: (?P<data_realizacji>(?<=Data waluty: )(?:.*))", memo.text)
     if re.search(r"Tytuł:", memo.text) is not None:
@@ -109,7 +105,6 @@ def _oplata_extract(memo):
         okres = ''
     data_realizacji = m.group('data_realizacji')
     return tytul, okres
-
 
 def _cleanup_desc(name, extname, memo):
     if 'Przelew z rachunku' in name.text or 'Zlecenie stałe' in name.text:
@@ -153,7 +148,7 @@ def _cleanup_desc(name, extname, memo):
 
     elif 'Opłata' in name.text or 'Prowizja' in name.text:
         tytul, okres = _oplata_extract(memo)
-        if okres is not '':
+        if okres != '':
             extname.text = tytul + ', okres: ' + okres
             memo.text = name.text + " " + tytul + ', okres: ' + okres
             name.text = name.text
@@ -161,8 +156,7 @@ def _cleanup_desc(name, extname, memo):
             extname.text = tytul
             memo.text = name.text + " " + tytul
             name.text = name.text
-
-
+        
 def cleanup(newdom):
     for el in newdom.iter("STMTTRN"):
         name = el.find('NAME')
@@ -177,9 +171,8 @@ def cleanup(newdom):
             print(extname.text)
             print(memo.text) 
 
-
 def conv_encoding(outputfilename):
-    BLOCKSIZE = 1048576  # or some other, desired size in bytes
+    BLOCKSIZE = 1048576 # or some other, desired size in bytes
     with codecs.open('_inteligo_8859.ofx', "r", "iso-8859-2") as sourceFile:
         with codecs.open(outputfilename, "w", "utf-8") as targetFile:
             while True:
@@ -190,9 +183,8 @@ def conv_encoding(outputfilename):
     if os.path.exists("_inteligo_8859.ofx"):
         os.remove("_inteligo_8859.ofx")
 
-
 def main(argv):
-    inputfilename = 'historia_old.xml'
+    inputfilename = 'historia.xml'
     outputfilename = 'inteligo.ofx'
     
     try:
@@ -214,6 +206,7 @@ def main(argv):
     print("Input file is: " + inputfilename)
     print("Output file is: " + outputfilename)
 
+
     newdom = transform(inputfilename)
     cleanup(newdom)
     newdom.write('_inteligo_8859.ofx', pretty_print=True, encoding='iso-8859-2')
@@ -225,10 +218,9 @@ def main(argv):
         "This is free software, and you are welcome to redistribute it, under certain conditions;"
     )
 
-
 if __name__ == '__main__':
     main(sys.argv[1:])
-
+    
 """
     Copyright (C) 2022  Łukasz Herok, HighPriest@Hiero Software
 

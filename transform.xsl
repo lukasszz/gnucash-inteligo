@@ -26,11 +26,14 @@
 
                             <xsl:for-each select="account-history/operations/operation">
                                 <STMTTRN>
+                                    <xsl:variable name="date-id">
+                                        <xsl:value-of select="translate(order-date, '-','')"/>
+                                    </xsl:variable>
                                     <TRNTYPE><xsl:value-of select="class"/></TRNTYPE>
                                     <DTPOSTED><xsl:value-of select="translate(exec-date, '-', '')"/></DTPOSTED>
                                     <DTUSER><xsl:value-of select="translate(order-date, '-','')"/></DTUSER>
                                     <TRNAMT><xsl:value-of select="amount"/></TRNAMT>
-                                    <FITID><xsl:value-of select="@id"/></FITID>
+                                    <FITID><xsl:value-of select="concat($date-id, '-', @id)"/></FITID>
                                     <NAME><xsl:value-of select="type"/></NAME>
                                     <EXTDNAME></EXTDNAME>
                                     <MEMO><xsl:value-of select="description"/></MEMO>
