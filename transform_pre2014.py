@@ -9,18 +9,6 @@ import lxml.etree as et
 import re
 import codecs
 
-
-def transform(inputfilename):
-    dom = et.parse(inputfilename)
-    xslt = et.parse('transform.xsl')
-    output = et.XSLT(xslt)
-
-    docinfo = dom.docinfo
-    print(docinfo.encoding)
-
-    return output(dom)
-
-
 def _przelew_extract(memo):
     m = re.match(r"(.*) Nr rach.: (.*) Tytuł: (.*) Data waluty: (.*)", memo.text)
     if (m):
@@ -72,12 +60,21 @@ def _cleanup_desc(name, extname, memo):
             name.text = name.text + ", w: " + kto
 
 
+def transform(inputfilename):
+    dom = et.parse(inputfilename)
+    xslt = et.parse('transform.xsl')
+    transform = et.XSLT(xslt)
+
+    print("File dom is now encoded in: " + dom.docinfo.encoding)
+
+    return dom.docinfo.encoding, transform(dom)
+
 def cleanup(newdom):
     for el in newdom.iter("STMTTRN"):
         name = el.find('NAME')
         extname = el.find('EXTDNAME')
         memo = el.find('MEMO')
-      
+
         try:
             _cleanup_desc(name, extname, memo)
         except:
