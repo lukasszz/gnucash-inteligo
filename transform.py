@@ -171,30 +171,37 @@ def cleanup(newdom):
             print(extname.text)
             print(memo.text) 
 
-def conv_encoding(outputfilename):
+def conv_encoding(encoding, outputfilename):
     BLOCKSIZE = 1048576 # or some other, desired size in bytes
-    with codecs.open('_inteligo_8859.ofx', "r", "iso-8859-2") as sourceFile:
+    with codecs.open('_inteligo_8859.ofx', "r", encoding) as sourceFile:
         with codecs.open(outputfilename, "w", "utf-8") as targetFile:
             while True:
                 contents = sourceFile.read(BLOCKSIZE)
                 if not contents:
                     break
                 targetFile.write(contents)
+        print("The dom has been converted from: "+ sourceFile.encoding + " to: "+ targetFile.encoding)
     if os.path.exists("_inteligo_8859.ofx"):
         os.remove("_inteligo_8859.ofx")
+
 
 def main(argv):
     inputfilename = 'historia.xml'
     outputfilename = 'inteligo.ofx'
     
     try:
-        opts, args = getopt.getopt(argv,"hi:o:",["ifille=","ofile="])
+        opts, args = getopt.getopt(argv,"hi:o:",["help","ifile","in","input","ofile","out","output"])
     except getopt.GetoptError:
-        print("transform.py -i <inputfile> -o <outputfilename>")
+        print("transform.py -i <inputfile> -o <outputfilename>\n"+
+              "             -h, --help for more information\n")
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h' or opt == '--help':
-            print("transform.py -i <inputfile> -o <outputfilename>")
+            print("transform.py -i <inputfile> -o <outputfilename>\n" + 
+                  "             -i, --ifile, --in, --input <inputfile>\n" +
+                  "                 File which you want to import, but some IDs have already been used and transactions are not imported\n" +
+                  "             -o, --ofile, --out, --output <outputfilename>\n"+
+                  "                 File which will be created with new IDs\n")
             sys.exit()
         elif opt in ("-i", "--ifile", "--in", "--input"):
             inputfilename = arg
@@ -207,10 +214,10 @@ def main(argv):
     print("Output file is: " + outputfilename)
 
 
-    newdom = transform(inputfilename)
+    encoding, newdom = transform(inputfilename)
     cleanup(newdom)
-    newdom.write('_inteligo_8859.ofx', pretty_print=True, encoding='iso-8859-2')
-    conv_encoding(outputfilename)
+    newdom.write('_inteligo_8859.ofx', pretty_print=True, encoding=encoding)
+    conv_encoding(encoding, outputfilename)
 
     print(
         "Inteligo->GnuCash  Copyright (C) 2022  HighPriest@Hiero Software\n" +
@@ -220,7 +227,7 @@ def main(argv):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
-    
+
 """
     Copyright (C) 2022  Łukasz Herok, HighPriest@Hiero Software
 
