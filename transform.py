@@ -1,6 +1,4 @@
 #!/bin/python3
-# Copyright 2022 Łukasz Herok, HighPriest@Hiero Software
-# Contact person: HighPriest@github
 
 import getopt
 import os
@@ -220,7 +218,6 @@ def main(argv):
     conv_encoding(outputfilename)
 
     print(
-        "Inteligo->GnuCash  Copyright (C) 2022  HighPriest@Hiero Software\n" +
         "This program comes with ABSOLUTELY NO WARRANTY\n" +
         "This is free software, and you are welcome to redistribute it, under certain conditions;"
     )
@@ -230,7 +227,6 @@ if __name__ == '__main__':
     main(sys.argv[1:])
 
 """
-    Copyright (C) 2022  Łukasz Herok, HighPriest@Hiero Software
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
