@@ -1,19 +1,36 @@
 #!/bin/python3
-
+# Copyright 2022 Łukasz Herok, HighPriest@Hiero Software
+# Contact person: HighPriest@github
 import getopt
 import os
 import sys
 import lxml.etree as et
 import codecs
 
-def transform(inputfilename):
-    dom = et.parse(inputfilename)
+def deduplicate(inputfilename: str, sourcefilename: str):
+    inputdom = et.parse(inputfilename)
+    sourcedom = et.parse(sourcefilename)
+    transform = et.XSLT(et.parse('deduplicate.xsl'))
+    outputdom = transform(sourcedom)
+    print("Input dom is encoded in: " + inputdom.docinfo.encoding)
+    print("Source dom is encoded in: " + sourcedom.docinfo.encoding)
+    print("Output dom is encoded in: " + outputdom.docinfo.encoding)
+
+    for operation in inputdom.xpath("//account-history/operations/operation/@id"):
+        if operation in sourcedom.xpath("//account-history/operations/operation/@id"):
+            print("Transaction id " + operation + " already exists in input file")
+            outputdom.xpath("//account-history/operations")[0].append(operation.getparent())
+    
+    return outputdom
+
+def transform(dedupeddom):
     xslt = et.parse('transform.xsl')
     transform = et.XSLT(xslt)
 
-    print("File dom is now encoded in: " + dom.docinfo.encoding)
+    print("Deduped dom is now encoded in: " + dedupeddom.docinfo.encoding)
 
-    return dom.docinfo.encoding, transform(dom)
+    return dedupeddom.docinfo.encoding, transform(dedupeddom)
+
 
 def cleanup(newdom):
     from cleanup_functions import _cleanup_desc
@@ -39,54 +56,64 @@ def conv_encoding(encoding, outputfilename):
                 if not contents:
                     break
                 targetFile.write(contents)
-        print("The dom has been converted from: "+ sourceFile.encoding + " to: "+ targetFile.encoding)
+        print("Deduped dom has been converted from: "+ sourceFile.encoding + " to: "+ targetFile.encoding)
     if os.path.exists("_inteligo_8859.ofx"):
         os.remove("_inteligo_8859.ofx")
 
 
 def main(argv):
     inputfilename = 'historia.xml'
+    sourcefilename = 'historia_old.xml'
     outputfilename = 'inteligo.ofx'
     
     try:
-        opts, args = getopt.getopt(argv,"hi:o:",["help","ifile","in","input","ofile","out","output"])
+        opts, args = getopt.getopt(argv,"hi:s:o:",["help","ifile","in","input","sfile","source","ofile","out","output"])
     except getopt.GetoptError:
-        print("transform.py -i <inputfile> -o <outputfilename>\n"+
+        print("transform.py -i <inputfile> -s <sourcefile> -o <outputfilename>\n"+
               "             -h, --help for more information\n")
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h' or opt == '--help':
-            print("transform.py -i <inputfile> -o <outputfilename>\n" + 
+            print("transform.py -i <inputfile> -s <sourcefile> -o <outputfilename>\n" + 
                   "             -i, --ifile, --in, --input <inputfile>\n" +
                   "                 File which you want to import, but some IDs have already been used and transactions are not imported\n" +
+                  "             -s, --sfile, --source <sourcefile>\n"+
+                  "                 File which has already been imported to GnuCash and occupies some IDs\n" +
                   "             -o, --ofile, --out, --output <outputfilename>\n"+
                   "                 File which will be created with new IDs\n")
             sys.exit()
         elif opt in ("-i", "--ifile", "--in", "--input"):
             inputfilename = arg
+        elif opt in ("-s", "--sfile", "--source"):
+            sourcefilename = arg
         elif opt in ("-o", "--ofile", "--out", "--output"):
             if arg.split(".")[1] & arg.split(".")[-1] == ".ofx":
                 outputfilename = arg
             else:
                 outputfilename = arg + ".ofx"
     print("Input file is: " + inputfilename)
+    print("Original source file is: " + sourcefilename)
     print("Output file is: " + outputfilename)
 
-
-    encoding, newdom = transform(inputfilename)
+    dedupeddom = deduplicate(inputfilename, sourcefilename)
+    #dedupeddom.write('_inteligo_8859.ofx', pretty_print=True, encoding='iso-8859-2') # testing
+    encoding, newdom = transform(dedupeddom)
     cleanup(newdom)
-    newdom.write('_inteligo_8859.ofx', pretty_print=True, encoding=encoding)
+    newdom.write('_inteligo_8859.ofx', pretty_print=True, encoding='iso-8859-2')
     conv_encoding(encoding, outputfilename)
 
     print(
+        "Inteligo->GnuCash  Copyright (C) 2022  HighPriest@Hiero Software\n" +
         "This program comes with ABSOLUTELY NO WARRANTY\n" +
         "This is free software, and you are welcome to redistribute it, under certain conditions;"
     )
+
 
 if __name__ == '__main__':
     main(sys.argv[1:])
 
 """
+    Copyright (C) 2022  Łukasz Herok, HighPriest@Hiero Software
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
